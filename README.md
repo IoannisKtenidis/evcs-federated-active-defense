@@ -21,7 +21,6 @@ An end-to-end, orchestrated active defense pipeline for Electric Vehicle Chargin
 * [Maintainers & Contributors](#maintainers--contributors)
 * [Contributing](#contributing)
 * [Acknowledgments](#acknowledgments--funding)
-* [License](#license)
 
 ---
 
@@ -251,7 +250,4 @@ For more information and related research, please visit [ITHACA-Lab](https://git
   <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/Flag_of_Europe.svg/120px-Flag_of_Europe.svg.png" alt="EU Flag" width="100"/>
 </p>
 
----
 
-## License
-Distributed under the MIT License. See `LICENSE` for more information.
