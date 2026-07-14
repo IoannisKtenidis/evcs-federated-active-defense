@@ -43,22 +43,22 @@ The system operates as a five-tier distributed active defense architecture, full
 
 ```mermaid
 flowchart TD
-    subgraph IoT Edge Charging Stations (EVCS)
-        C1[FIDS Client Node 1<br/>fids-node-1]
-        C2[FIDS Client Node 2<br/>fids-node-2]
-        C3[FIDS Client Node 3<br/>fids-node-3<br/>*Byzantine Node*]
+    subgraph "IoT Edge Charging Stations (EVCS)"
+        C1["FIDS Client Node 1<br/>fids-node-1"]
+        C2["FIDS Client Node 2<br/>fids-node-2"]
+        C3["FIDS Client Node 3<br/>fids-node-3<br/>*Byzantine Node*"]
     end
 
-    subgraph Central Aggregator (CSMS)
-        S1[FIDS Server<br/>fids-server]
+    subgraph "Central Aggregator (CSMS)"
+        S1["FIDS Server<br/>fids-server"]
     end
 
-    subgraph Active Defense Orchestrator
-        N8N[n8n Orchestrator<br/>n8n_orchestrator]
-        AISAP[AISAP Container<br/>aisap_aag]
+    subgraph "Active Defense Orchestrator"
+        N8N["n8n Orchestrator<br/>n8n_orchestrator"]
+        AISAP["AISAP Container<br/>aisap_aag"]
     end
 
-    Volume[(Shared Volume<br/>/results)]
+    Volume[("Shared Volume<br/>/results")]
 
     %% Connections
     C1 <-->|Secure gRPC| S1
@@ -249,7 +249,7 @@ This project has received funding from the **National Recovery and Resilience Pl
 For more information and related research, please visit [ITHACA-Lab](https://github.com/ITHACA-Lab).
 
 <p align="center">
-  <img src="https://europa.eu/webtools/rest/wservices/europa/images/eu-flag.jpg" alt="EU Flag" width="100"/>
+  <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/Flag_of_Europe.svg/120px-Flag_of_Europe.svg.png" alt="EU Flag" width="100"/>
 </p>
 
 ---
