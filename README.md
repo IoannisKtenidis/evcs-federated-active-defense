@@ -20,7 +20,7 @@ An end-to-end, orchestrated active defense pipeline for Electric Vehicle Chargin
 * [API & Metrics](#api--metrics)
 * [Maintainers & Contributors](#maintainers--contributors)
 * [Contributing](#contributing)
-* [Acknowledgments & Funding](#acknowledgments--funding)
+* [Acknowledgments](#acknowledgments--funding)
 * [License](#license)
 
 ---
