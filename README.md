@@ -243,8 +243,7 @@ We welcome contributions! Please follow these guidelines:
 
 ---
 
-## Acknowledgments & Funding
-This project has received funding from the **National Recovery and Resilience Plan ‘Greece 2.0’** under the **European Union’s NextGenerationEU** framework. 
+## Acknowledgments
 
 For more information and related research, please visit [ITHACA-Lab](https://github.com/ITHACA-Lab).
 
