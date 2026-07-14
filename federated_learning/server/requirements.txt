@@ -1,0 +1,7 @@
+Flask==2.3.2
+requests==2.31.0
+flwr>=1.5.0
+tensorflow
+pandas
+scikit-learn
+psutil

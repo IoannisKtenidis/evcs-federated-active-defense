@@ -1,0 +1,13 @@
+{
+    "dataset_path": "black_box/dataset/test.csv",
+    "dataset_name" : "blackbox_test",
+    "eps": 0.1, 
+    "evaluation_output_path": "black_box/results",
+    "adversarial_dataset_output_path": "black_box/results",
+    "columns_to_drop": ["Flow ID", "Src IP", "Src Port", "Dst IP", "Dst Port","Protocol", "Timestamp"],
+    "type_of_attack": ["fgsm"],
+    "jsma_theta": 0.9,
+    "jsma_gamma": 0.01
+}
+
+

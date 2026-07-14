@@ -1,0 +1,95 @@
+{
+    "name": "AMYNA-TN Scenario 2 Loop",
+    "nodes": [
+        {
+            "parameters": {},
+            "id": "1",
+            "name": "Manual Trigger",
+            "type": "n8n-nodes-base.manualTrigger",
+            "typeVersion": 1,
+            "position": [
+                250,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "http://aisap:5000/run_attack",
+                "sendBody": true,
+                "contentType": "multipart-form-data",
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "epsilon",
+                            "value": "0.1"
+                        },
+                        {
+                            "name": "attack",
+                            "value": "fgsm"
+                        }
+                    ]
+                },
+                "sendBinaryData": true,
+                "binaryPropertyName": "dataset,model,scaler,encoder",
+                "options": {}
+            },
+            "id": "2",
+            "name": "Trigger AISAP (Augmentation)",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4,
+            "position": [
+                500,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "http://fids_server:5000/retrain",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "trigger",
+                            "value": "aisap_complete"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "3",
+            "name": "Trigger FIDS Retraining",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4,
+            "position": [
+                750,
+                300
+            ]
+        }
+    ],
+    "connections": {
+        "Manual Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Trigger AISAP (Augmentation)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Trigger AISAP (Augmentation)": {
+            "main": [
+                [
+                    {
+                        "node": "Trigger FIDS Retraining",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}

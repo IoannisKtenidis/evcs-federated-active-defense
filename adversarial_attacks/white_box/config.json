@@ -1,0 +1,25 @@
+{
+    "dataset_path": "./dataset/OCPPFlow_meter/Test.csv",
+    "dataset_name": "OCPP_Test",
+    "scaler_path": "./scaler/scaler_ocpp.joblib",
+    "model_path": "./model/OCPP_model.h5",
+    "encoder_path": "./encoder/encoder_ocpp.joblib",
+    "eps": 1.0,
+    "evaluation_output_path": "./results",
+    "adversarial_dataset_output_path": "./results",
+    "columns_to_drop": [
+        "flow_id",
+        "src_ip",
+        "dst_ip",
+        "src_port",
+        "dst_port",
+        "timestamp",
+        "flow_start_timestamp",
+        "flow_end_timestamp"
+    ],
+    "type_of_attack": [
+        "fgsm"
+    ],
+    "jsma_theta": 1.0,
+    "jsma_gamma": 0.1
+}

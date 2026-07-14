@@ -1,0 +1,139 @@
+\section{Experimental Evaluation and Security Analysis}
+\label{sec:evaluation}
+
+In this section, we present a comprehensive experimental evaluation of the proposed Federated Intrusion Detection System (FIDS) for Open Charge Point Protocol (OCPP) networks. The evaluation is structured around the lifecycle of the active intrusion defense loop and evaluates the system across four critical security dimensions:
+\begin{enumerate}
+    \item \textbf{Baseline Classification Performance:} Evaluating the Multi-Layer Perceptron (MLP) model's ability to classify network telemetry data under standard operating conditions and during baseline (non-evasive) attacks.
+    \item \textbf{Adversarial Evasion Robustness:} Testing model resilience against Fast Gradient Sign Method (FGSM) evasion attacks and proving the efficacy of local Federated Adversarial Training (FAT).
+    \item \textbf{Byzantine Fault Tolerance \& Model Poisoning:} Quantifying global model accuracy when a malicious client (Byzantine node) attempts model poisoning, comparing standard and robust aggregation rules.
+    \item \textbf{End-to-End Orchestration Loop Latency:} Measuring the execution time and state transitions of the active mitigation loop orchestrated by the n8n container, Flask APIs, and Flower.
+\end{enumerate}
+
+\subsection{Baseline FIDS Classifier Performance}
+\label{subsec:baseline_performance}
+The first evaluation phase assesses the downstream MLP classifier's capability to identify network anomalies and attacks under normal data distributions. Features are extracted using the \textit{OCPPFlowMeter} and preprocessed via a unified pipeline that drops metadata and absolute timestamps to prevent temporal data leakage (Scenario A). A stratified 70/30 train/test split is applied to a merged dataset of 4,315 samples, yielding a balanced test set of 1,295 samples.
+
+The detailed classification performance is summarized in Table~\ref{tab:baseline_metrics}. The baseline model achieves a high overall classification accuracy of \textbf{98.22\%}. In more detail, the classifier achieves $F_1$-scores ranging from 98.05\% to 98.45\% across all cyberattack classes. Specifically, the \textit{Heartbeat Flooding} DoS attack is successfully classified with a precision of 99.23\% and a recall of 97.35\%, whereas \textit{Unauthorized Access} attempts achieve a precision of 98.07\% and a recall of 98.07\%. The high recall and precision scores across all categories indicate that the MLP classifier generalizes exceptionally well to unseen telemetry data, without showing signs of overfitting.
+
+\begin{table}[htbp]
+\centering
+\caption{Baseline FIDS Classification Metrics (Scenario A)}
+\label{tab:baseline_metrics}
+\begin{tabular}{lcccc}
+\hline
+\textbf{Class} & \textbf{Precision} & \textbf{Recall} & \textbf{F1-Score} & \textbf{Support} \\ \hline
+Denial of Charge & 0.9692 & 0.9921 & 0.9805 & 254 \\
+Heartbeat Flooding & 0.9923 & 0.9735 & 0.9828 & 264 \\
+Charging Profile Manipulation & 0.9845 & 0.9845 & 0.9845 & 258 \\
+Unauthorized Access & 0.9807 & 0.9807 & 0.9807 & 259 \\
+Normal (Benign) & 0.9846 & 0.9808 & 0.9827 & 260 \\ \hline
+\textbf{Overall Accuracy} & \multicolumn{2}{c}{--} & \textbf{0.9822} & \textbf{1295} \\ \hline
+\end{tabular}
+\end{table}
+
+To visually inspect these metrics, we present the Normalized Confusion Matrix in Fig.~\ref{fig:confusion_matrix} and the FIDS Performance Metrics Bar Chart in Fig.~\ref{fig:fids_metrics}. As shown in the confusion matrix (Fig.~\ref{fig:confusion_matrix}), there is minor semantic overlap ($0.77\%$) between \textit{Normal (Benign)} traffic and \textit{Denial of Charge} (rounded to 0.01 in Fig.~\ref{fig:confusion_matrix}), while only $1.92\%$ of \textit{Normal (Benign)} traffic is misclassified as cyberattacks across all categories. This behavior is expected since standard charging procedures involve charging rate changes and state queries that closely resemble the initiation steps of a Denial of Charge exploit. Crucially, the $98.22\%$ accuracy demonstrates that keeping the OCPP layer signatures provides a highly separable feature space, allowing the MLP to learn robust boundaries for all OCPP-specific attack types.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.48\textwidth]{figures/confusion_matrix.pdf}
+    \caption{Normalized Confusion Matrix of the Baseline MLP FIDS Classifier under Scenario A.}
+    \label{fig:confusion_matrix}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.48\textwidth]{figures/fids_performance_metrics.pdf}
+    \caption{Baseline FIDS Classifier Performance Metrics (Precision, Recall, F1-Score) across all five network classes.}
+    \label{fig:fids_metrics}
+\end{figure}
+
+\subsection{Adversarial Evasion Robustness}
+\label{subsec:adversarial_robustness}
+In the second evaluation phase, we subject the classifier to adversarial evasion attacks. An attacker intercepts the OCPP TCP/IP stream and applies the Fast Gradient Sign Method (FGSM) with an adversarial perturbation of $\epsilon = 0.1$ to the telemetry features, aiming to bypass detection. We evaluate this attack under three training scenarios:
+\begin{enumerate}
+    \item \textbf{Centralized Baseline:} A standard centralized model trained without adversarial defenses.
+    \item \textbf{FL Baseline (No AT):} A collaborative FL model trained using standard FedAvg without adversarial training.
+    \item \textbf{FL + Local FGSM-AT:} The proposed federated model where local clients perform 50-50 mix Adversarial Training using local FGSM samples generated via the Adversarial Robustness Toolbox (ART).
+\end{enumerate}
+
+The classification accuracy under both clean and adversarial conditions is shown in Fig.~\ref{fig:adversarial_robustness} and summarized in Table~\ref{tab:adversarial_metrics}.
+
+\begin{table}[htbp]
+\centering
+\caption{Adversarial Robustness Under FGSM ($\epsilon = 0.1$)}
+\label{tab:adversarial_metrics}
+\begin{adjustbox}{max width=\columnwidth}
+\begin{tabular}{lccl}
+\hline
+\textbf{Training Scheme} & \textbf{Clean Acc. (\%)} & \textbf{Adv. Acc. (\%)} & \textbf{Security Status} \\ \hline
+Centralized Baseline & 99.85 & 12.40 & Vulnerable to Evasion \\
+FL Baseline (No AT) & 99.78 & 15.10 & Vulnerable to Evasion \\
+\textbf{FL + Local FGSM-AT} & \textbf{99.81} & \textbf{98.50} & \textbf{Robust (FGSM)} \\ \hline
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+Under clean telemetry, all three configurations exhibit near-perfect accuracy (above 99.7\%). However, when subjected to FGSM evasion attacks, the accuracy of the \textit{Centralized Baseline} collapses to \textbf{12.40\%}, indicating that the decision boundaries are highly vulnerable to small perturbations. Similarly, the standard \textit{FL Baseline} fails to resist the attack, with its accuracy dropping to \textbf{15.10\%}. In contrast, the model trained with the proposed \textit{FL + Local FGSM-AT} maintains a high classification accuracy of \textbf{98.50\%} under adversarial conditions. These findings demonstrate that incorporating local adversarial training is essential to build robust decision boundaries capable of detecting perturbed malicious payloads. We note as a limitation that the current evaluation focuses on single-step white-box FGSM evasion ($\epsilon=0.1$); future work will explore multi-step adversarial training (e.g., PGD) and black-box transferability attacks to generalize robustness.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.48\textwidth]{figures/adversarial_robustness.pdf}
+    \caption{FIDS Classification Accuracy under FGSM Evasion Attack ($\epsilon = 0.1$): Comparing Centralized, Standard Federated (FL), and Adversarially Trained Federated (FL + Local FGSM-AT) models.}
+    \label{fig:adversarial_robustness}
+\end{figure}
+
+\subsection{Byzantine Robustness under Model Poisoning}
+\label{subsec:byzantine_robustness}
+In a federated learning setup, malicious or compromised edge clients (Byzantine clients) may attempt to distort the global model. We evaluate the resilience of the Flower Server against a Model Poisoning Attack where one out of three clients (33.3\% of the network) acts as a Byzantine node, uploading poisoned weight updates to the server. We compare four parameter aggregation strategies, namely \textit{FedAvg}, \textit{FedProx}, \textit{FedMedian}, and \textit{Multi-Krum / Bulyan}.
+
+The global model accuracy under these poisoning attacks is shown in Fig.~\ref{fig:byzantine_robustness} and summarized in Table~\ref{tab:byzantine_metrics}.
+
+\begin{table}[htbp]
+\centering
+\caption{Global Model Accuracy Under Model Poisoning Attacks}
+\label{tab:byzantine_metrics}
+\begin{adjustbox}{max width=\columnwidth}
+\begin{tabular}{lccl}
+\hline
+\textbf{Aggregation Rule} & \textbf{Accuracy (\%)} & \textbf{Parameters} & \textbf{Aggregator Status} \\ \hline
+FedAvg (Standard) & 34.20 & default & Model Hijacked \\
+FedProx & 48.50 & $\mu = 0.01$ & Heavily Degraded \\
+FedMedian & 98.20 & coordinate-wise median & \textbf{Robust Convergence} \\
+\textbf{Multi-Krum / Bulyan} & \textbf{99.10} & $f = 1$ Byzantine node & \textbf{Optimal Defense} \\ \hline
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+Under standard \textit{FedAvg}, the global model accuracy collapses to \textbf{34.20\%}, demonstrating that a single malicious client can easily manipulate the linear average and redirect convergence. The \textit{FedProx} aggregator offers slight protection by constraining the local weights via its proximal term, but it still exhibits significant degradation, yielding an accuracy of \textbf{48.50\%}. On the other hand, the Byzantine-robust estimators provide excellent security. \textit{FedMedian} filters out coordinate-wise outliers to achieve an accuracy of \textbf{98.20\%}. Finally, the \textit{Multi-Krum / Bulyan} hybrid strategy achieves the highest robustness with a global accuracy of \textbf{99.10\%}, successfully isolating the poisoned updates and preserving the classification capabilities of the FIDS.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.48\textwidth]{figures/byzantine_robustness.pdf}
+    \caption{Global Model Accuracy under Model Poisoning Attacks: Comparing standard aggregation (FedAvg, FedProx) and Byzantine-robust aggregation (FedMedian, Multi-Krum/Bulyan).}
+    \label{fig:byzantine_robustness}
+\end{figure}
+
+\subsection{End-to-End Orchestration and Active Defense Latency}
+\label{subsec:latency_evaluation}
+The proposed active defense loop operates as a closed-loop orchestration system managed by the n8n orchestrator. When the FIDS detects an evasion attack (Subsection~\ref{subsec:adversarial_robustness}), the system alerts the orchestrator via a webhook, which automatically triggers the AISAP dataset generator and launches a Flower federated retraining process (Subsection~\ref{subsec:byzantine_robustness}). This process retrains the model on all edge clients using robust aggregation to prevent poisoning.
+
+The mitigation timeline and the associated state transitions are presented in Table~\ref{tab:latency_timeline}.
+
+\begin{table}[htbp]
+\centering
+\caption{E2E Active Defense Loop Latency \& State Transitions}
+\label{tab:latency_timeline}
+\begin{adjustbox}{max width=\columnwidth}
+\begin{tabular}{llcccc}
+\hline
+\textbf{Marker} & \textbf{System State} & \textbf{Action Taken} & \textbf{HTTP Status} & \textbf{Step (s)} & \textbf{Cum. (s)} \\ \hline
+T0 & Normal State & OCPP Telemetry Monitoring & 200 OK & 0.0 & 0.0 \\
+T1 & Attack Triggered & Evasion Detection \& Webhook Alert & 400 Bad Request & 1.2 & 1.2 \\
+T2 & Adversarial Gen. & AISAP Adversarial Data Synthesis & 202 Accepted & 8.4 & 9.6 \\
+T3 & Federated Retraining & Flower 3-round retraining (gRPC) & 202 Accepted & 14.5 & 24.1 \\
+T4 & Mitigated State & Robust model deployed & 200 OK & 0.0 & \textbf{24.1} \\ \hline
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+The entire active defense loop completes in \textbf{24.1 seconds}. Alerting and detection take 1.2 seconds to capture the attack and notify the orchestrator. The AISAP generator takes 8.4 seconds to compile the adversarial training dataset. Finally, the federated retraining phase takes 14.5 seconds. During this phase, the Flask process manager cleans the ports, binds the sockets, and coordinates three training rounds across the clients. The cumulative mitigation latency of \textbf{24.1 seconds} is small enough to secure EV charging stations against evasion attacks in near-real-time, preventing service disruptions and grid imbalances.

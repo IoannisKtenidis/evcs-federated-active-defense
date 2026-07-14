@@ -1,0 +1,74 @@
+{
+  "name": "Scenario_2_FL_Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "start-fl",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [ 250, 300 ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://aisap_aag:5000/run_attack",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {"name": "epsilon", "value": "0.1"},
+            {"name": "attack", "value": "fgsm"}
+          ]
+        },
+        "options": {}
+      },
+      "name": "Run Attack (AISAP)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [ 450, 300 ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://fids-server:5000/retrain"
+      },
+      "name": "Trigger FL (FIDS)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [ 650, 300 ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Run Attack (AISAP)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Attack (AISAP)": {
+      "main": [
+        [
+          {
+            "node": "Trigger FL (FIDS)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

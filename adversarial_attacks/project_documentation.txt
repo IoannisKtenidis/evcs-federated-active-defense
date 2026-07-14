@@ -1,0 +1,81 @@
+Adversarial Attack Generator (AAG) Documentation
+===============================================
+
+1. Overview
+-----------
+The Adversarial Attack Generator (AAG) is a graphical user interface (GUI) application developed in Python using the Streamlit framework. Its primary purpose is to generate adversarial examples targeting machine learning models (specifically Keras Deep Learning models) to evaluate their robustness and assist in adversarial training.
+
+The tool leverages the Adversarial Robustness Toolbox (ART) library to implement state-of-the-art white-box attacks. It provides a complete pipeline from data preprocessing to attack execution, evaluation, visualization, and robust model verification.
+
+2. Technology Stack & Tools
+---------------------------
+- **Language**: Python 3.x
+- **GUI Framework**: Streamlit
+- **Adversarial library**: Adversarial Robustness Toolbox (ART) v1.14+
+- **Deep Learning Framework**: TensorFlow / Keras
+- **Data Manipulation**: Pandas, NumPy
+- **Machine Learning Utilities**: Scikit-learn (for metrics, scaling, encoding)
+- **Visualization**: Matplotlib, Seaborn
+
+3. Application Pipeline
+-----------------------
+
+3.1. Input Data & Model Loading
+The application requires four key components to function:
+   - **Dataset (.csv)**: The test dataset containing features and labels.
+   - **Model (.h5, .pkl)**: The pre-trained Keras model target for the attack.
+   - **Scaler (.pkl, .joblib)**: The scaler used during training to normalize the input features.
+   - **Encoder (.pkl, .joblib)**: The label encoder used to transform class labels.
+
+3.2. Data Preprocessing
+   - **File Reading**: The CSV file is read into a Pandas DataFrame.
+   - **Sample Limiting**: To ensure performance with computationally expensive attacks (e.g., NewtonFool), the user can limit the number of samples processed via a sidebar slider.
+   - **Feature Selection**: Users can specify columns to drop (e.g., identifiers like IP addresses) that are not features for the model.
+   - **Scaling**: Input features are scaled using the provided scaler object.
+   - **Label Encoding**: Target labels are encoded using the provided label encoder to match the model's output format.
+   - **Robustness Checks**: The system checks for feature mismatches between the scaler and the input dataset, automatically dropping extra columns and reordering features to match training conditions.
+
+3.3. Model Configuration
+   - Keras models are loaded and explicitly compiled with `categorical_crossentropy` loss and `adam` optimizer to ensure compatibility with ART's gradient-based attacks.
+   - The application supports TensorFlow 2.x execution in Eager mode.
+
+3.4. Adversarial Attack Generation
+Users can select from a wide range of extensive white-box attacks:
+   - **Fast Gradient Sign Method (FGSM)**: A fast, single-step gradient-based attack.
+   - **Projected Gradient Descent (PGD)**: An iterative version of FGSM, stronger and more robust.
+   - **Basic Iterative Method (BIM)**: Another iterative extension of FGSM.
+   - **Jacobian-based Saliency Map Attack (JSMA)**: A saliency-map based attack focusing on specific features.
+   - **Carlini & Wagner (C&W) L2**: An optimization-based attack known for finding minimum perturbations.
+   - **DeepFool**: An iterative method to find the closest decision boundary.
+   - **NewtonFool**: An attack based on Newton's method for finding roots.
+   - **ElasticNet**: An attack using Elastic Net regularization (L1 and L2).
+   - **HopSkipJump**: A powerful decision-based attack (often used in black-box settings but applicable here).
+
+   *Configuration*: Users can control the perturbation magnitude (Epsilon) for applicable attacks.
+
+3.5. Evaluation & Metrics
+The application evaluates both the original model outcomes on clean data and on the generated adversarial data.
+   - **Metrics**: Accuracy, True Positive Rate (TPR), False Positive Rate (FPR), F1-Score (Weighted), AUC Score.
+   - **Visualization**:
+     - **Confusion Matrices**: Side-by-side comparison of Clean vs. Adversarial predictions.
+     - **Perturbation Analysis**: Bar chart showing the average noise added to the top 15 most perturbed features.
+   - **Execution Time**: Tracks and displays the total time taken for the attack.
+
+3.6. Export Results
+Users can download a ZIP file containing:
+   - `adversarial_dataset_only.csv`: The generated adversarial examples.
+   - `adversarial_training_dataset.csv`: A combined dataset of clean and adversarial examples for robust training.
+   - `metrics.json`: A JSON file containing all evaluation metrics.
+
+3.7. Robust Model Evaluation (Adversarial Training Validation)
+After generating attacks, the user can upload a "Robust Model" (a new model trained on the adversarial data). The system:
+   - Re-runs the exact same attack configuration on the dataset.
+   - Evaluates the Robust Model on these adversarial examples.
+   - Compares the Robust Model's performance against the Original Model's performance on the same adversarial data, displaying the improvement (Delta).
+
+4. Key Features & Implementation Details
+--------------------------------------
+- **Interactive UI**: Real-time feedback, progress spinners, and interactive widgets.
+- **Error Handling**: Graceful handling of TensorFlow version incompatibilities, missing columns, and file format errors.
+- **Flexibility**: Supports various model formats and automatically adjusts data pipelines based on scaler attributes (e.g., `feature_names_in_`).
+- **Performance Optimization**: Includes sample limiting to handle large datasets on standard hardware without timeouts.

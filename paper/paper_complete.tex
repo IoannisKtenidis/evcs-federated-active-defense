@@ -1,0 +1,339 @@
+\documentclass[10pt, a4paper, conference]{IEEEtran}
+\usepackage[left=1.3cm,right=1.3cm,top=1.9cm,bottom=4.3cm]{geometry}
+% \IEEEoverridecommandlockouts
+% The preceding line is only needed to identify funding in the first footnote. If that is unneeded, please comment it out.
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{soul}
+\usepackage{algorithm}
+\usepackage{hyperref}
+\usepackage{authblk}
+\usepackage{longtable, lscape}
+\usepackage{multirow}
+\usepackage{lipsum}
+\usepackage{indentfirst}
+\usepackage{adjustbox}
+\usepackage{float}
+\usepackage{subfigure}
+\usepackage{setspace} 
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+    
+\begin{document}
+\title{Orchestrated Active Defense Against Evasion Attacks in IoT Charging Networks Using Federated Learning}
+% \author{
+% 	\IEEEauthorblockN{Ioannis Ktenidis\IEEEauthorrefmark{1}, 
+%     Athanasios Liatifis\IEEEauthorrefmark{1}, 
+%     Dimitrios Pliatsios\IEEEauthorrefmark{1}, 
+%     ..., 
+%     Thomas Lagkas,  
+%     Panagiotis Sarigiannidis\IEEEauthorrefmark{1}}
+% 	\IEEEauthorblockA{\IEEEauthorrefmark{1}Department of Electrical and Computer Engineering, University of Western Macedonia, Kozani 50100, Greece\\
+%     email: {i.ktenidis@uowm.gr, aliatifis@uowm.gr, dpliatsios@uowm.gr, ... psarigiannidis@uowm.gr}}
+% }
+\author{
+Ioannis Ktenidis\IEEEauthorrefmark{1}, 
+Athanasios Liatifis\IEEEauthorrefmark{1}, 
+Manolis Skoularikis\IEEEauthorrefmark{1}
+Dimitrios Pliatsios\IEEEauthorrefmark{1},
+...
+Panagiotis Sargiannidis\IEEEauthorrefmark{1}\\
+\IEEEauthorrefmark{1}Department of Electrical and Computer Engineering, \\University of Western Macedonia,
+Kozani 50100, Greece\\
+emails:\{aff02156@uowm.gr, aliatifis@uowm.gr, aff02190@uowm.gr, dpliatsios@uowm.gr, psarigiannidis@uowm.gr\}
+}
+
+\maketitle
+
+\begin{abstract}
+The rapid increase of Internet of Things (IoT) devices in critical infrastructures, such as Electric Vehicle Charging Stations (EVCS) operating under the OCPP protocol, has introduced significant cybersecurity vulnerabilities. Traditional centralized intrusion detection systems (IDS) raise privacy concerns and pose single points of failure. In this paper, we present the design, implementation, and evaluation of a containerized, orchestrator-driven active defense testbed utilizing Byzantine-robust Federated Learning (FL). 
+Our proposed framework, Fed-OCPP-Secure, integrates a decentralized Federated Intrusion Detection System (FIDS) with an automated threat mitigation loop. A centralized orchestrator (n8n) automates the defense cycle by triggering real-time adversarial sample generation using the Adversarial Robustness Toolbox (ART) when it detects compromised states. The FIDS client nodes, representing distinct charging stations, perform local adversarial training (FGSM-AT) regularized with FedProx to mitigate non-IID data drift. The global model parameters are aggregated on the server using a Byzantine-robust consensus strategy (FedMedian) to counter model poisoning. 
+Our baseline multi-layer perceptron (MLP) model, trained on 47 features from the application-layer OCPP 1.6 intrusion detection dataset, achieves 98.22\% classification accuracy across five classes (normal traffic and four distinct cyberattacks). The experimental results demonstrate that the proposed active defense loop successfully transitions the system state from compromised to mitigated against single-step evasion attacks (achieving 98.50\% adversarial accuracy) within a unified federated retraining round, offering a resilient and privacy-enhancing security paradigm for IoT-enabled charging infrastructures.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Adversarial Machine Learning, Byzantine Robustness, Deep Neural Network (DNN), Electric Vehicle Charging Stations (EVCS), Evasion Attacks, Federated Learning, Intrusion Detection System (IDS), Internet of Things (IoT) Security 
+\end{IEEEkeywords}
+
+\section{Introduction}
+The rapid growth of electric mobility has led to the massive deployment of Electric Vehicle Charging Stations (EVCS) integrated into the Internet of Things (IoT) ecosystem. Modern EVCS infrastructure relies heavily on standardized application-layer protocols, such as the Open Charge Point Protocol (OCPP) versions 1.6 and 2.0.1, to exchange real-time transaction data, heartbeats, and configuration metrics with Central Management Systems (CSMS) \cite{Boussaha2025}. Charging stations act as a bridge between the power grid and the digital world, which makes them a target for hackers. Flaws in the communication software (OCPP) could allow hackers to disable chargers, bypass security, or manipulate charging behavior, all of which threaten both grid stability and public trust \cite{Kabir2026}.
+To secure these infrastructures, Intrusion Detection Systems (IDS) have been widely proposed. Traditional IDS approaches typically rely on centralized architectures in which raw network telemetry is aggregated in a central repository for training and prediction \cite{Seo2025} . Although effective, centralized training poses severe data privacy risks, as it exposes sensitive user habits, transaction histories, and charging schedules. Furthermore, transmitting large volumes of telemetry from distributed charging spots to a central cloud incurs high communication overhead and introduces single-point-of-failure (SPoF) vulnerabilities   \cite{Nguyen2025}.
+Federated Learning (FL) has emerged as a promising paradigm to address these limitations. By enabling local charging stations to train machine learning models on private telemetry and sharing only model weights with a central aggregator, FL enhances data privacy compared to centralized architectures and reduces bandwidth consumption \cite{Dalamagkas2025}.   Nevertheless, FL is vulnerable to adversarial machine learning, specifically evasion attacks. In an evasion scenario, an attacker slightly perturbs application-layer features to bypass classification at inference time, rendering standard FL-trained IDS models ineffective \cite{Dalamagkas2025}. Furthermore, the non-Independent and Identically Distributed (non-IID) nature of data across heterogeneous charging stations frequently leads to degrading global classification performance \cite{Fu2023}.
+Static defense mechanisms are fundamentally inadequate for evolving, dynamic attack patterns. There is an urgent requirement for an automated, orchestrated active defense loop capable of dynamically identifying compromised states, simulating adversarial threats to generate robust patches, and executing federated retraining in near-real-time, while neutralizing potential model poisoning from malicious participants \cite{Hadi2026}. To address these challenges, we present a containerized active defense testbed utilizing Byzantine-robust Federated Learning.
+
+In this work, we present the design, deployment, and evaluation of Fed-OCPP-Secure, a containerized active defense testbed for EV charging infrastructures. The system leverages Byzantine-robust Federated Learning (FL) and automated orchestration to mitigate evasion attacks in near-real-time. The contributions of this work are highlighted as follows:
+\begin{itemize}
+	\item We present the deployment of a fully containerized IoT-enabled EVCS testbed, including the FIDS server, local clients, an adversarial simulation engine, and an orchestrator.
+	\item We describe the active defense loop that automates threat detection, on-the-fly adversarial sample generation, and federated retraining using the DYNABIC OCPP 1.6 dataset.
+	\item We implement and evaluate Byzantine-robust aggregation strategies on the server-side and local FedProx regularization \textbf{[FedProx Citation Needed]} with adversarial training (FGSM-AT) on the client-side.
+    \item We evaluate the performance of our framework in terms of accuracy, F1-score, and mitigation speed, demonstrating that the system successfully transitions from a compromised state to a robust defense.
+\end{itemize}
+
+The outcomes of this work demonstrate the feasibility of securing OCPP-compliant EV charging infrastructures against evasion attacks using a Byzantine-robust federated learning framework. By establishing an automated active defense loop, the proposed system can dynamically mitigate security threats in a privacy-enhancing manner without exposing raw charging telemetry data. The rest of the paper is organized as follows:  Section~\ref{sec:testbed} describes the testbed architecture, network topology, and the active defense orchestration loop.  Section~\ref{sec:fl_methodology } analyzes the decentralized intrusion detection model, the local adversarial training process, and the Byzantine-robust aggregation strategies. Furthermore,  Section~\ref{sec:evaluation} presents the performance evaluation results under different attack scenarios. Finally, Section~\ref{sec:conclusion} summarizes and concludes this paper.
+
+\section{Testbed Deployment \& Dataset Generation}\label{sec:testbed}
+\subsection{Testbed Architecture, Hardware, and Software}
+The architecture of the testbed is illustrated in Fig.~\ref{fig:testbed_architecture}.  The testbed consists of distributed hardware components, namely a central coordinator server representing the Central Management System (CSMS) and three edge computing nodes acting as EV Charging Stations (EVCS).
+\begin{figure}[htbp]
+	\centering
+	\includegraphics[width=\columnwidth]{figures/architecture.png}
+	\caption{Testbed Architecture \& Topology}
+	\label{fig:testbed_architecture}
+\end{figure}
+
+A central workstation is utilized to host the aggregator functionalities and coordinate the federated retraining process. Specifically, the Flower framework \textbf{[Flower Citation Needed]} is deployed on the server to manage client synchronization and aggregate model updates via secure gRPC channels. On the edge side, the distributed computing nodes are deployed as clients that run local intrusion detection models (FIDS) to classify telemetry data locally.
+The software components are fully containerized using Docker to enhance portability and scalability. The communication plane consists of:
+\begin{itemize}
+	\item The application-layer OCPP 1.6 protocol, which runs over WebSockets (TCP/IP) to exchange charging transactions, boot notifications, and meter values between the EVCS clients and the CSMS.
+	\item  The control plane, which utilizes Flask-based REST APIs to handle registration, training triggers, and alert webhooks.
+    \item The orchestrator container, which handles active defense logic by automatically triggering the Adversarial Simulation Engine to generate evasion samples and requesting federated retraining when a node sends a compromised alert.
+    \item The local FIDS models on the edge nodes, which utilize the Adversarial Robustness Toolbox (ART) \textbf{[ART Citation Needed]} to generate local adversarial samples (via FGSM) and train robust models using the FedProx regularization.
+\end{itemize}
+
+The federated learning and adversarial attack configuration parameters are summarized in Table~\ref{tab:configuration_parameters}. 
+The testbed incorporates three local clients (EVCS nodes) and a central server. The federated learning rounds are set to 3, with each client training locally for 5 epochs using a batch size of 32. To address non-IID data distributions, the FedProx strategy is adopted with a proximal regularization term $\mu$ equal to 0.01. For the local adversarial training, the Fast Gradient Sign Method (FGSM) is used with a perturbation step size $\epsilon$ of 0.1. The robust training dataset is constructed using a 50-50 ratio of clean to adversarial samples. Finally, the Adam optimizer with a learning rate of 0.001 and categorical cross-entropy loss is used to train the baseline 5-class MLP classifier.
+
+\begin{table}[htbp]
+\renewcommand{\arraystretch}{1.2}
+\centering
+\caption{Federated learning and adversarial attack configuration parameters.}
+\label{tab:configuration_parameters}
+\begin{adjustbox}{max width=\columnwidth}
+\begin{tabular}{cc}
+\hline
+\textbf{Parameter} & \textbf{Value} \\ \hline
+Number of Clients & 3 \\
+Federated Learning Rounds & 3 \\
+Local Epochs & 5 \\
+Local Batch Size & 32 \\
+Aggregation Strategy & FedProx / FedMedian \\
+Proximal Coefficient ($\mu$) & 0.01 \\
+Adversarial Perturbation ($\epsilon$) & 0.1 \\
+Robust Training Ratio & 50\% Clean / 50\% Adversarial \\
+Baseline Model Optimizer & Adam (Learning Rate = 0.001) \\ \hline
+\end{tabular}
+\end{adjustbox}
+\end{table} 
+
+\subsection{Dataset Generation}
+To evaluate the security testbed, we utilize the application-layer telemetry of the DYNABIC Federated OCPP 1.6 Intrusion Detection Dataset, which is publicly available on Zenodo\footnote{\url{https://zenodo.org/records/14887131}}. The dataset represents realistic traffic flows collected from WebSocket packets exchanged between electric vehicle charging spots (EVSE) and a Central Management System (CSMS) using the OCPP 1.6 protocol. 
+The dataset captures benign EV charging behaviors alongside four distinct types of charging-related cyberattacks:
+\begin{enumerate}
+    \item Charging Profile Manipulation\textbf{:} Unauthorized modifications of charging power/current limits to cause grid instability.
+    \item Denial of Charge\textbf{:} Aborting active charging sessions via spoofed stop transaction commands.
+    \item Heartbeat Flooding\textbf{:} Denial of Service (DoS) attacks directed at the CSMS via flooding heartbeat requests.
+    \item Unauthorized Access\textbf{:} Impersonating valid charging points on the WebSocket layer without credentials.
+\end{enumerate}
+The raw telemetry initially contains 55 features. We perform a data cleaning process that replaces infinite values and drops rows with missing values. Furthermore, we drop 8 metadata and timestamp columns (\texttt{flow\_id}, \texttt{src\_ip}, \texttt{dst\_ip}, \texttt{src\_port}, \texttt{dst\_port}, \texttt{timestamp}, \texttt{flow\_start\_timestamp}, and \texttt{flow\_end\_timestamp}) to prevent model overfitting and temporal leakage. This preprocessing results in a final dataset of 47 input features and one label field. 
+Instead of raw telemetry, the 47 features are described in the text by grouping them into four major categories:
+\begin{itemize}
+    \item Network and TCP Statistics\textbf{:} Basic flow measurements such as packet counters (forward and backward directions), flow duration, and TCP flags (SYN, RST, PSH, ACK, URG, CWE, ECE, FIN) which characterize the underlying network socket state.
+    \item HTTP and WebSocket Layer Metrics\textbf{:} HTTP GET request rates, status code distribution (2xx, 4xx, 5xx), overall WebSocket packet/byte throughput rates, and WebSocket control messages (ping, pong, data payloads, and close connection packets).
+    \item OCPP Protocol Messages\textbf{:} Core OCPP message counters including Heartbeat signals, Hard/Soft resets, Unlock Connector commands, Start/Stop transaction packets, and rejected Authorize requests.
+    \item Smart Charging and Meter Telemetry\textbf{:} Detailed parameter statistics from OCPP payloads, including SetChargingProfile charging rate limits (minimum, maximum, average), MeterValues transmission counts, battery State of Charge (SoC) percentages, and Watt-hour differences between consecutive energy reports.
+\end{itemize}
+For the federated evaluation, the dataset is partitioned into three client subsets (Client 1, Client 2, Client 3) to represent edge charging stations, and a Combined dataset containing 4,315 entries (3,020 train and 1,295 test entries) used for baseline training.
+
+\section{Proposed Federated Learning \& Active Defense System}\label{sec:fl_methodology}
+We present the design of a Federated Intrusion Detection System (FIDS) integrated into an automated active defense loop. Telemetry metrics from the OCPP 1.6 protocol are preprocessed locally at each client node. To prevent data leakage, the StandardScaler is fitted strictly on the training partition of the dataset, and is subsequently used to scale both the training set and the held-out testing split. The dataset is split locally at each charging station node, keeping a localized partition for training, while a combined testing split is held out centrally to evaluate the global model.
+
+\subsection{Multi-Layer Perceptron Classifier \& Local Adversarial Training}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\columnwidth]{figures/Multi-Layer Perceptron MLP.png}
+    \caption{Multi-Layer Perceptron (MLP) }
+    \label{fig:dnn_pipeline}
+\end{figure}
+The architecture of the Multi-Layer Perceptron (MLP) model is shown in Fig.~\ref{fig:dnn_pipeline}. It consists of four layers: the Input layer, two Dense hidden layers, and the Output layer. The input layer accepts $M=47$ features representing application-layer network telemetry. The two hidden layers contain 64 and 32 neurons, respectively, utilizing the Rectified Linear Unit (ReLU) activation function. The output layer contains $C=5$ neurons representing normal traffic and four classes of OCPP attacks. The final class predictions are generated using the Softmax activation function:
+\begin{equation}
+\sigma(z)_i=\frac{e^{z_i}}{\sum_{j=1}^{C} e^{z_j}},\quad i=1, \ldots, C
+\end{equation}
+where $z_j$ stands for the unnormalized score the model produces for class $j$ before the softmax function.
+To mitigate evasion attacks at the edge, each charging station (FL client) implements local adversarial training (AT) using the Adversarial Robustness Toolbox (ART). Evasion samples are generated locally using the Fast Gradient Sign Method (FGSM) with a step size of $\epsilon=0.1$:
+\begin{equation}
+X_{adv} = X + \epsilon \cdot \text{sign}(\nabla_X L(w, X, y))
+\end{equation}
+Clean and adversarial samples are mixed in a 50-50 ratio ($X_{robust} = [X, X_{adv}]$, $y_{robust} = [y, y]$) to ensure the model maintains high accuracy on normal traffic while gaining resilience against perturbed packets. The Adam optimizer with a learning rate of $0.001$ and categorical cross-entropy loss are utilized. To prevent client drift under non-IID conditions, local training is regularized using the FedProx penalty term with a proximal coefficient $\mu=0.01$:
+\begin{equation}
+L_{local}(w) = L_{base}(w) + \frac{\mu}{2} \sum_{l=1}^{L} \| w_l - w_l^{global} \|_2^2
+\end{equation}
+
+\subsection{Federated Aggregation and Byzantine Robustness}
+The central coordinator (FIDS server) manages the federated aggregation. Retraining is coordinated over gRPC (port 8080) for 3 rounds, with clients training locally for 5 epochs per round. To protect the global model against model poisoning or malfunctioning client nodes, the server implements Byzantine-robust aggregation strategies. These include:
+\begin{itemize}
+    \item FedMedian: Performs coordinate-wise median aggregation, which successfully filters out outlier updates.
+    \item Multi-Krum / Bulyan\textbf{:} Computes Euclidean distances between client weight updates to identify and select the majority of benign client updates, defending against malicious poisoned updates.
+\end{itemize}
+
+\subsection{Active Defense Loop Orchestration \& Toolset}
+The entire system is deployed in a containerized Docker network to simulate a distributed EV charging infrastructure. The active defense loop is orchestrated by the n8n orchestrator as a state machine:
+\begin{enumerate}
+    \item \textbf{Threat Detection:} When an attacker launches an evasion attack, the target client node detects a classification drop and sends an HTTP POST alert to the n8n webhook (status 400 - Compromised).
+    \item \textbf{Adversarial Generation:} n8n triggers the AISAP container, which generates new adversarial OCPP samples on-the-fly and writes them to a shared volume (\texttt{/results}).
+    \item \textbf{Retraining Trigger:} n8n issues an HTTP POST request to the FIDS server's \texttt{/retrain} endpoint, which initiates the Byzantine-robust Flower FL round. The clients load the new adversarial dataset from the shared volume to update their weights.
+    \item \textbf{Mitigation Deployment:} Once retraining concludes, the server updates the global model (\texttt{OCPP\_model.h5}), and the clients deploy it, successfully blocking subsequent attacks (status 200 - Blocked).
+\end{enumerate}
+
+\section{Experimental Evaluation and Security Analysis}
+\label{sec:evaluation}
+
+In this section, we present a comprehensive experimental evaluation of the proposed Federated Intrusion Detection System (FIDS) for Open Charge Point Protocol (OCPP) networks. The evaluation is structured around the lifecycle of the active intrusion defense loop and evaluates the system across four critical security dimensions:
+\begin{enumerate}
+    \item \textbf{Baseline Classification Performance:} Evaluating the Multi-Layer Perceptron (MLP) model's ability to classify network telemetry data under standard operating conditions and during baseline (non-evasive) attacks.
+    \item \textbf{Adversarial Evasion Robustness:} Testing model resilience against Fast Gradient Sign Method (FGSM) evasion attacks and proving the efficacy of local Federated Adversarial Training (FAT).
+    \item \textbf{Byzantine Fault Tolerance \& Model Poisoning:} Quantifying global model accuracy when a malicious client (Byzantine node) attempts model poisoning, comparing standard and robust aggregation rules.
+    \item \textbf{End-to-End Orchestration Loop Latency:} Measuring the execution time and state transitions of the active mitigation loop orchestrated by the n8n container, Flask APIs, and Flower.
+\end{enumerate}
+
+\subsection{Baseline FIDS Classifier Performance}
+\label{subsec:baseline_performance}
+The first evaluation phase assesses the downstream MLP classifier's capability to identify network anomalies and attacks under normal data distributions. Features are extracted using the \textit{OCPPFlowMeter} and preprocessed via a unified pipeline that drops metadata and absolute timestamps to prevent temporal data leakage (Scenario A). A stratified 70/30 train/test split is applied to a merged dataset of 4,315 samples, yielding a balanced test set of 1,295 samples.
+
+The detailed classification performance is summarized in Table~\ref{tab:baseline_metrics}. The baseline model achieves a high overall classification accuracy of \textbf{98.22\%}. In more detail, the classifier achieves $F_1$-scores ranging from 98.05\% to 98.45\% across all cyberattack classes. Specifically, the \textit{Heartbeat Flooding} DoS attack is successfully classified with a precision of 99.23\% and a recall of 97.35\%, whereas \textit{Unauthorized Access} attempts achieve a precision of 98.07\% and a recall of 98.07\%. The high recall and precision scores across all categories indicate that the MLP classifier generalizes exceptionally well to unseen telemetry data, without showing signs of overfitting.
+
+\begin{table}[htbp]
+\centering
+\caption{Baseline FIDS Classification Metrics (Scenario A)}
+\label{tab:baseline_metrics}
+\begin{adjustbox}{max width=\columnwidth}
+\begin{tabular}{lcccc}
+\hline
+\textbf{Class} & \textbf{Precision} & \textbf{Recall} & \textbf{F1-Score} & \textbf{Support} \\ \hline
+Denial of Charge & 0.9692 & 0.9921 & 0.9805 & 254 \\
+Heartbeat Flooding & 0.9923 & 0.9735 & 0.9828 & 264 \\
+Charging Profile Manipulation & 0.9845 & 0.9845 & 0.9845 & 258 \\
+Unauthorized Access & 0.9807 & 0.9807 & 0.9807 & 259 \\
+Normal (Benign) & 0.9846 & 0.9808 & 0.9827 & 260 \\ \hline
+\textbf{Overall Accuracy} & \multicolumn{2}{c}{--} & \textbf{0.9822} & \textbf{1295} \\ \hline
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+To visually inspect these metrics, we present the Normalized Confusion Matrix in Fig.~\ref{fig:confusion_matrix} and the FIDS Performance Metrics Bar Chart in Fig.~\ref{fig:fids_metrics}. As shown in the confusion matrix (Fig.~\ref{fig:confusion_matrix}), there is minor semantic overlap ($0.77\%$) between \textit{Normal (Benign)} traffic and \textit{Denial of Charge} (rounded to 0.01 in Fig.~\ref{fig:confusion_matrix}), while only $1.92\%$ of \textit{Normal (Benign)} traffic is misclassified as cyberattacks across all categories. This behavior is expected since standard charging procedures involve charging rate changes and state queries that closely resemble the initiation steps of a Denial of Charge exploit. Crucially, the $98.22\%$ accuracy demonstrates that keeping the OCPP layer signatures provides a highly separable feature space, allowing the MLP to learn robust boundaries for all OCPP-specific attack types.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.48\textwidth]{figures/confusion_matrix.pdf}
+    \caption{Normalized Confusion Matrix of the Baseline MLP FIDS Classifier under Scenario A.}
+    \label{fig:confusion_matrix}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.48\textwidth]{figures/fids_performance_metrics.pdf}
+    \caption{Baseline FIDS Classifier Performance Metrics (Precision, Recall, F1-Score) across all five network classes.}
+    \label{fig:fids_metrics}
+\end{figure}
+
+\subsection{Adversarial Evasion Robustness}
+\label{subsec:adversarial_robustness}
+In the second evaluation phase, we subject the classifier to adversarial evasion attacks. An attacker intercepts the OCPP TCP/IP stream and applies the Fast Gradient Sign Method (FGSM) with an adversarial perturbation of $\epsilon = 0.1$ to the telemetry features, aiming to bypass detection. We evaluate this attack under three training scenarios:
+\begin{enumerate}
+    \item \textbf{Centralized Baseline:} A standard centralized model trained without adversarial defenses.
+    \item \textbf{FL Baseline (No AT):} A collaborative FL model trained using standard FedAvg without adversarial training.
+    \item \textbf{FL + Local FGSM-AT:} The proposed federated model where local clients perform 50-50 mix Adversarial Training using local FGSM samples generated via the Adversarial Robustness Toolbox (ART).
+\end{enumerate}
+
+The classification accuracy under both clean and adversarial conditions is shown in Fig.~\ref{fig:adversarial_robustness} and summarized in Table~\ref{tab:adversarial_metrics}.
+
+\begin{table}[htbp]
+\centering
+\caption{Adversarial Robustness Under FGSM ($\epsilon = 0.1$)}
+\label{tab:adversarial_metrics}
+\begin{adjustbox}{max width=\columnwidth}
+\begin{tabular}{lccl}
+\hline
+\textbf{Training Scheme} & \textbf{Clean Acc. (\%)} & \textbf{Adv. Acc. (\%)} & \textbf{Security Status} \\ \hline
+Centralized Baseline & 99.85 & 12.40 & Vulnerable to Evasion \\
+FL Baseline (No AT) & 99.78 & 15.10 & Vulnerable to Evasion \\
+\textbf{FL + Local FGSM-AT} & \textbf{99.81} & \textbf{98.50} & \textbf{Robust (FGSM)} \\ \hline
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+Under clean telemetry, all three configurations exhibit near-perfect accuracy (above 99.7\%). However, when subjected to FGSM evasion attacks, the accuracy of the \textit{Centralized Baseline} collapses to \textbf{12.40\%}, indicating that the decision boundaries are highly vulnerable to small perturbations. Similarly, the standard \textit{FL Baseline} fails to resist the attack, with its accuracy dropping to \textbf{15.10\%}. In contrast, the model trained with the proposed \textit{FL + Local FGSM-AT} maintains a high classification accuracy of \textbf{98.50\%} under adversarial conditions. These findings demonstrate that incorporating local adversarial training is essential to build robust decision boundaries capable of detecting perturbed malicious payloads. We note as a limitation that the current evaluation focuses on single-step white-box FGSM evasion ($\epsilon=0.1$); future work will explore multi-step adversarial training (e.g., PGD) and black-box transferability attacks to generalize robustness.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.48\textwidth]{figures/adversarial_robustness.pdf}
+    \caption{FIDS Classification Accuracy under FGSM Evasion Attack ($\epsilon = 0.1$): Comparing Centralized, Standard Federated (FL), and Adversarially Trained Federated (FL + Local FGSM-AT) models.}
+    \label{fig:adversarial_robustness}
+\end{figure}
+
+\subsection{Byzantine Robustness under Model Poisoning}
+\label{subsec:byzantine_robustness}
+In a federated learning setup, malicious or compromised edge clients (Byzantine clients) may attempt to distort the global model. We evaluate the resilience of the Flower Server against a Model Poisoning Attack where one out of three clients (33.3\% of the network) acts as a Byzantine node, uploading poisoned weight updates to the server. We compare four parameter aggregation strategies, namely \textit{FedAvg}, \textit{FedProx}, \textit{FedMedian}, and \textit{Multi-Krum / Bulyan}.
+
+The global model accuracy under these poisoning attacks is shown in Fig.~\ref{fig:byzantine_robustness} and summarized in Table~\ref{tab:byzantine_metrics}.
+
+\begin{table}[htbp]
+\centering
+\caption{Global Model Accuracy Under Model Poisoning Attacks}
+\label{tab:byzantine_metrics}
+\begin{adjustbox}{max width=\columnwidth}
+\begin{tabular}{lccl}
+\hline
+\textbf{Aggregation Rule} & \textbf{Accuracy (\%)} & \textbf{Parameters} & \textbf{Aggregator Status} \\ \hline
+FedAvg (Standard) & 34.20 & default & Model Hijacked \\
+FedProx & 48.50 & $\mu = 0.01$ & Heavily Degraded \\
+FedMedian & 98.20 & coordinate-wise median & \textbf{Robust Convergence} \\
+\textbf{Multi-Krum / Bulyan} & \textbf{99.10} & $f = 1$ Byzantine node & \textbf{Optimal Defense} \\ \hline
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+Under standard \textit{FedAvg}, the global model accuracy collapses to \textbf{34.20\%}, demonstrating that a single malicious client can easily manipulate the linear average and redirect convergence. The \textit{FedProx} aggregator offers slight protection by constraining the local weights via its proximal term, but it still exhibits significant degradation, yielding an accuracy of \textbf{48.50\%}. On the other hand, the Byzantine-robust estimators provide excellent security. \textit{FedMedian} filters out coordinate-wise outliers to achieve an accuracy of \textbf{98.20\%}. Finally, the \textit{Multi-Krum / Bulyan} hybrid strategy achieves the highest robustness with a global accuracy of \textbf{99.10\%}, successfully isolating the poisoned updates and preserving the classification capabilities of the FIDS.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.48\textwidth]{figures/byzantine_robustness.pdf}
+    \caption{Global Model Accuracy under Model Poisoning Attacks: Comparing standard aggregation (FedAvg, FedProx) and Byzantine-robust aggregation (FedMedian, Multi-Krum/Bulyan).}
+    \label{fig:byzantine_robustness}
+\end{figure}
+
+\subsection{End-to-End Orchestration and Active Defense Latency}
+\label{subsec:latency_evaluation}
+The proposed active defense loop operates as a closed-loop orchestration system managed by the n8n orchestrator. When the FIDS detects an evasion attack (Subsection~\ref{subsec:adversarial_robustness}), the system alerts the orchestrator via a webhook, which automatically triggers the AISAP dataset generator and launches a Flower federated retraining process (Subsection~\ref{subsec:byzantine_robustness}). This process retrains the model on all edge clients using robust aggregation to prevent poisoning.
+
+The mitigation timeline and the associated state transitions are presented in Table~\ref{tab:latency_timeline}.
+
+\begin{table}[htbp]
+\centering
+\caption{E2E Active Defense Loop Latency \& State Transitions}
+\label{tab:latency_timeline}
+\begin{adjustbox}{max width=\columnwidth}
+\begin{tabular}{llcccc}
+\hline
+\textbf{Marker} & \textbf{System State} & \textbf{Action Taken} & \textbf{HTTP Status} & \textbf{Step (s)} & \textbf{Cum. (s)} \\ \hline
+T0 & Normal State & OCPP Telemetry Monitoring & 200 OK & 0.0 & 0.0 \\
+T1 & Attack Triggered & Evasion Detection \& Webhook Alert & 400 Bad Request & 1.2 & 1.2 \\
+T2 & Adversarial Gen. & AISAP Adversarial Data Synthesis & 202 Accepted & 8.4 & 9.6 \\
+T3 & Federated Retraining & Flower 3-round retraining (gRPC) & 202 Accepted & 14.5 & 24.1 \\
+T4 & Mitigated State & Robust model deployed & 200 OK & 0.0 & \textbf{24.1} \\ \hline
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+The entire active defense loop completes in \textbf{24.1 seconds}. Alerting and detection take 1.2 seconds to capture the attack and notify the orchestrator. The AISAP generator takes 8.4 seconds to compile the adversarial training dataset. Finally, the federated retraining phase takes 14.5 seconds. During this phase, the Flask process manager cleans the ports, binds the sockets, and coordinates three training rounds across the clients. The cumulative mitigation latency of \textbf{24.1 seconds} is small enough to secure EV charging stations against evasion attacks in near-real-time, preventing service disruptions and grid imbalances.
+
+\section{Conclusion} \label{sec:conclusion}
+In this work, we presented the design, implementation, and evaluation of Fed-OCPP-Secure, a containerized, orchestrator-driven active defense testbed utilizing Byzantine-robust Federated Learning (FL) to secure Electric Vehicle Charging Stations (EVCS) operating under the OCPP 1.6 protocol. The proposed framework integrates a decentralized FIDS with an automated threat mitigation loop managed by the n8n orchestrator. 
+
+Our baseline MLP classifier, trained on 47 OCPP application-layer features, achieves an organic classification accuracy of 98.22\% across five classes (benign traffic and four charging-related cyberattacks). The experimental results demonstrate that while standard FL models collapse to 15.10\% accuracy under FGSM evasion attacks ($\epsilon = 0.1$), the proposed local FGSM Adversarial Training (FGSM-AT) regularized with FedProx maintains a high classification accuracy of 98.50\% under attack. Furthermore, robust aggregators such as FedMedian and Multi-Krum/Bulyan secure the server against Byzantine model poisoning, maintaining up to 99.10\% global accuracy. Finally, the entire closed-loop orchestration completes the mitigation cycle in 24.1 seconds, presenting a resilient, privacy-enhancing, and near-real-time security paradigm for IoT-enabled charging infrastructures.
+
+As future work, we plan to extend this framework to support OCPP 2.0.1 telemetry and explore active defenses against more sophisticated black-box adversarial transferability attacks in larger-scale heterogeneous charging networks. Additionally, we aim to incorporate Differential Privacy (DP) and cryptographic protocols (e.g., Secure Multiparty Computation) to further mitigate potential membership inference and model reconstruction risks in the federated weight exchange.
+
+\section*{Acknowledgment}
+This work has received funding from the Smart Networks and Services Joint Undertaking (SNS JU) under the European Union's Horizon Europe research and innovation programme under Grant Agreement No. 101096456 (NANCY). Views and opinions expressed are however those of the author(s) only and do not necessarily reflect those of the European Union or the SNS JU. Neither the European Union nor the granting authority can be held responsible for them.
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\end{document}

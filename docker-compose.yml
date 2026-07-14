@@ -1,0 +1,114 @@
+version: '3.8'
+
+services:
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: n8n_orchestrator
+    hostname: n8n
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=n8n
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - NODE_ENV=production
+      - WEBHOOK_URL=http://0.0.0.0:5678/
+      - GENERIC_TIMEZONE=Europe/Athens
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      - N8N_SECURE_COOKIE=false
+    volumes:
+      - ./n8n/data:/home/node/.n8n
+      - ./n8n/workflows:/data/workflows
+    networks:
+      - amyna_net
+    restart: unless-stopped
+
+  aisap:
+    build: 
+      context: ./adversarial_attacks
+      dockerfile: Dockerfile
+    container_name: aisap_aag
+    ports:
+      - "8000:5000" # Flask API exposed externally on 8000, internally on 5000
+    volumes:
+      - ./adversarial_attacks:/app
+    networks:
+      - amyna_net
+    restart: unless-stopped
+
+  fids-server:
+    build:
+      context: ./federated_learning/server
+      dockerfile: Dockerfile
+    container_name: fids-server
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./federated_learning/server:/app
+      - ./adversarial_attacks:/shared_aisap
+    networks:
+      - amyna_net
+    restart: unless-stopped
+    depends_on:
+      - n8n
+
+  fids-client-1:
+    build:
+      context: ./federated_learning/client_node
+      dockerfile: Dockerfile
+    container_name: fids-node-1
+    ports:
+      - "5001:5001"
+    environment:
+      - SERVER_URL=http://fids-server:5000
+      - NODE_ID=fids-node-1
+    volumes:
+      - ./federated_learning/client_node:/app
+      - ./adversarial_attacks:/shared_aisap
+    networks:
+      - amyna_net
+    restart: unless-stopped
+    depends_on:
+      - fids-server
+
+  fids-client-2:
+    build:
+      context: ./federated_learning/client_node
+      dockerfile: Dockerfile
+    container_name: fids-node-2
+    ports:
+      - "5002:5001"
+    environment:
+      - SERVER_URL=http://fids-server:5000
+      - NODE_ID=fids-node-2
+    volumes:
+      - ./federated_learning/client_node:/app
+      - ./adversarial_attacks:/shared_aisap
+    networks:
+      - amyna_net
+    restart: unless-stopped
+    depends_on:
+      - fids-server
+
+  fids-client-3:
+    build:
+      context: ./federated_learning/client_node
+      dockerfile: Dockerfile
+    container_name: fids-node-3
+    ports:
+      - "5003:5001"
+    environment:
+      - SERVER_URL=http://fids-server:5000
+      - NODE_ID=fids-node-3
+    volumes:
+      - ./federated_learning/client_node:/app
+      - ./adversarial_attacks:/shared_aisap
+    networks:
+      - amyna_net
+    restart: unless-stopped
+    depends_on:
+      - fids-server
+
+networks:
+  amyna_net:
+    driver: bridge

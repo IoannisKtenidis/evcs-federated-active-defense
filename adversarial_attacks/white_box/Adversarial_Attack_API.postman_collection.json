@@ -1,0 +1,67 @@
+{
+  "info": {
+    "name": "AAG Tool API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Welcome to the Adversarial Attack Generator (AAG)."
+  },
+  "item": [
+    {
+      "name": "Run Adversarial Attack",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "dataset",
+              "type": "file",
+              "description": "CSV file containing the dataset"
+            },
+            {
+              "key": "model",
+              "type": "file",
+              "description": "H5 file containing the trained model"
+            },
+            {
+              "key": "scaler",
+              "type": "file",
+              "description": ".joblib file for data scaling"
+            },
+            {
+              "key": "encoder",
+              "type": "file",
+              "description": ".joblib file for label encoding"
+            },
+            {
+              "key": "epsilon",
+              "value": "0.1",
+              "type": "text",
+              "description": "Perturbation value (0 to 1)"
+            },
+            {
+              "key": "attack",
+              "value": "fgsm",
+              "type": "text",
+              "description": "Attack type: fgsm, pgd, bim, jsma, cw"
+            },
+            {
+              "key": "columns_to_drop",
+              "value": "flow_id,src_ip,dst_ip,src_port,dst_port",
+              "type": "text",
+              "description": "Comma-separated list of dropped columns"
+            }
+          ]
+        },
+        "url": {
+          "raw": "http://192.168.126.144:5000/run_attack",
+          "protocol": "http",
+          "host": ["192.168.126.144"],
+          "port": "5000",
+          "path": ["run_attack"]
+        }
+      },
+      "response": []
+    }
+  ]
+}

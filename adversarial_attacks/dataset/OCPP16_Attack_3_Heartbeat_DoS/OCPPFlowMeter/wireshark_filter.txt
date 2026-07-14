@@ -1,0 +1,1 @@
+(ip.src == 192.168.21.0/24 and ip.dst == 192.168.21.0/24) or igmp or arp or ssdp or dhcp or mdns or browser
